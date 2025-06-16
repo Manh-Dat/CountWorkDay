@@ -1,0 +1,51 @@
+﻿<Window x:Class="CountWodayWpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:CountWodayWpf"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="800">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+            <TextBlock Text="Chọn file Excel input: " VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBox x:Name="InputFilePathTextBox" Width="400" IsReadOnly="True" Margin="0,0,10,0"/>
+            <Button Content="Chọn file..." Click="SelectFileButton_Click"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Margin="0,40,0,0" Grid.Row="1">
+            <TextBlock Text="Chọn file output: " VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBox x:Name="OutputFilePathTextBox" Width="400" IsReadOnly="True" Margin="0,0,10,0"/>
+            <Button Content="Chọn nơi lưu..." Click="SelectOutputFileButton_Click"/>
+        </StackPanel>
+        <Button Content="Process" Grid.Row="1" Margin="650,0,0,0" Width="100" Height="30" VerticalAlignment="Top" Click="ProcessButton_Click"/>
+        <GroupBox Header="Debug" Grid.Row="2" Margin="0,20,0,0">
+            <TextBox x:Name="DebugTextBox" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" AcceptsReturn="True" IsReadOnly="True" TextWrapping="Wrap"/>
+        </GroupBox>
+        <GroupBox Header="Thêm dòng thông tin" Grid.Row="3" Margin="0,20,0,0">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="10">
+                    <TextBlock Text="Ô chứa tên:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBox x:Name="CellNameTextBox" Width="80" Margin="0,0,10,0"/>
+                    <TextBlock Text="Ô bắt đầu:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBox x:Name="CellStartTextBox" Width="80" Margin="0,0,10,0"/>
+                    <TextBlock Text="Ô kết thúc:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBox x:Name="CellEndTextBox" Width="80" Margin="0,0,10,0"/>
+                    <Button Content="Thêm dòng" Click="AddRowButton_Click" Width="100"/>
+                    <Button Content="Xóa dòng" Click="DeleteRowButton_Click" Width="100" Margin="10,0,0,0"/>
+                </StackPanel>
+                <ListBox x:Name="AddedRowsListBox" Height="100" Margin="10,10,10,0"/>
+                <StackPanel Orientation="Horizontal" Margin="10,10,0,0">
+                    <TextBlock Text="Key String:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBox x:Name="KeyStringTextBox" Width="200"/>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+        <Button Content="Show Thông tin" Grid.Row="3" Margin="650,10,0,0" Width="120" Height="30" VerticalAlignment="Top" Click="ShowInfoButton_Click"/>
+    </Grid>
+</Window>
