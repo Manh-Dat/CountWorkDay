@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CountWodayWpf"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="556" Width="800">
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -44,8 +44,15 @@
                     <TextBlock Text="Key String:" VerticalAlignment="Center" Margin="0,0,10,0"/>
                     <TextBox x:Name="KeyStringTextBox" Width="200"/>
                 </StackPanel>
+                <!-- Giờ vào làm / tan làm -->
+                <StackPanel Orientation="Horizontal" Margin="10,10,0,0">
+                    <TextBlock Text="Giờ vào làm:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBox x:Name="StartTimeTextBox" Width="80" Margin="0,0,20,0" Text="08:30"/>
+                    <TextBlock Text="Giờ tan làm:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBox x:Name="EndTimeTextBox" Width="80" Text="17:30"/>
+                </StackPanel>
             </StackPanel>
         </GroupBox>
-        <Button Content="Show Thông tin" Grid.Row="3" Margin="650,10,0,0" Width="120" Height="30" VerticalAlignment="Top" Click="ShowInfoButton_Click"/>
+        <Button Content="Export File Chấm công" Grid.Row="3" Margin="567,10,-10,0" Height="30" VerticalAlignment="Top" Click="ShowInfoButton_Click"/>
     </Grid>
 </Window>

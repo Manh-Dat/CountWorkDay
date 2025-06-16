@@ -74,6 +74,8 @@ namespace CountWodayWpf
 
         private void ProcessButton_Click(object sender, RoutedEventArgs e)
         {
+            ExportSample();
+            return;
             DebugTextBox.Clear();
             string inputPath = InputFilePathTextBox.Text;
             if (string.IsNullOrWhiteSpace(inputPath) || !System.IO.File.Exists(inputPath))
@@ -374,7 +376,14 @@ namespace CountWodayWpf
                         var value = cell?.ToString()?.Trim();
                         if (!string.IsNullOrEmpty(value))
                         {
-                            timeChecking.Add(value);
+                            if (cell != null && cell.CellType == CellType.Numeric && DateUtil.IsCellDateFormatted(cell))
+                            {
+                                timeChecking.Add(GetRoundedTimeString(cell.DateCellValue)); // Hoặc định dạng khác nếu cần
+                            }
+                            else
+                            {
+                                timeChecking.Add(value);
+                            }
                         }
                     }
 
@@ -384,9 +393,21 @@ namespace CountWodayWpf
 
             return workDays;
         }
+        public static string GetRoundedTimeString(DateTime dt)
+        {
+            // Nếu giây >= 30 thì cộng thêm 1 phút
+            if (dt.Second >= 30)
+                dt = dt.AddMinutes(1);
+
+            // Trả về dạng HH:mm, bỏ giây
+            return new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, 0).ToString("HH:mm");
+        }
+        BoxWriter writer;
         public void ShowInfor()
         {
             string inputPath = InputFilePathTextBox.Text;
+            SetupSheet("Kết quả chấm công", new int[] { 18, 30 });
+            writer = new BoxWriter(sheet, borderedStyle, 1);
             if (string.IsNullOrWhiteSpace(inputPath) || !System.IO.File.Exists(inputPath))
             {
                 AppendDebug("Vui lòng chọn file Excel input hợp lệ.");
@@ -429,7 +450,6 @@ namespace CountWodayWpf
                             }
                         }
                         if (!hasKeyString) continue;
-                        AppendDebug($"--- Sheet: {sheet.SheetName} chứa Key String ---");
                         foreach (var item in AddedRowsListBox.Items)
                         {
                             // Định dạng: Ô chứa tên: {cellName} | Ô bắt đầu: {cellStart} | Ô kết thúc: {cellEnd}
@@ -442,17 +462,17 @@ namespace CountWodayWpf
                             // Tìm tên nhân viên
                             string empName = GetCellValueFromSheet(cellName, inputPath, sheetIdx);
                             AppendDebug($"Tên nhân viên: {empName}");
-                            // Tìm dải ô Time Card
-                            List<WorkDay> workDays = ReadWorkDaysFromRange(inputPath, cellStart, cellEnd,  sheetIdx);
-                            for (int i = 0; i < workDays.Count; i++)
-                            {
-                                AppendDebug("-------" + workDays[i].dayString);
-                                for (int j = 0; j < workDays[i].timeChecking.Count; j++)
+                            writer.WriteBox(new string[,]
                                 {
-                                    AppendDebug(workDays[i].timeChecking[j]);
+                                    { "Tên", empName }
+                                },
+                                new bool[,] { { true, true } },
+                                new string[,] {{ "LightGreen", null },{ "LightGreen", null }
                                 }
+                             );
+                            // Tìm dải ô Time Card
+                            HandleDayWork(ReadWorkDaysFromRange(inputPath, cellStart, cellEnd, sheetIdx));
 
-                            }
                             /*List<string> thongtin = ProcessCellRange(cellStart, cellEnd, inputPath, sheetIdx);
                             if (thongtin.Count > 0)
                             {
@@ -467,6 +487,7 @@ namespace CountWodayWpf
                             }*/
                         }
                     }
+                    SaveWorkbook(writeWorkbook);
                 }
             }
             catch (Exception ex)
@@ -474,7 +495,195 @@ namespace CountWodayWpf
                 AppendDebug($"Lỗi khi đọc file: {ex.Message}");
             }
         }
-        
+        TimeSpan h11 = new TimeSpan(11, 0, 0);
+        TimeSpan h9 = new TimeSpan(9, 30, 0);
+        TimeSpan h2 = new TimeSpan(2, 0, 0);
+        TimeSpan h3 = new TimeSpan(3, 0, 0);
+        TimeSpan h6 = new TimeSpan(6, 0, 0);
+        TimeSpan h17 = new TimeSpan(17, 0, 0);
+        public void HandleDayWork(List<WorkDay> _workDays)
+        {
+            if (!TimeSpan.TryParse(StartTimeTextBox.Text, out TimeSpan allowedStartTime))
+            {
+                MessageBox.Show("Giờ vào làm không hợp lệ. Định dạng đúng: HH:mm", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            int lateDayCount = 0;
+            string LateDays = "";
+            int NoCheckinCount = 0;
+            string NoCheckin = "";
+            int NoCheckoutCount = 0;
+            string NoCheckout = "";
+            int HalfDayCount = 0;
+            string HalfDays = "";
+            float dayWork = 0;
+
+            for (int i = 0; i < _workDays.Count; i++)
+            {
+                var workDay = _workDays[i];
+
+                if (workDay.timeChecking == null || workDay.timeChecking.Count == 0)
+                    continue;
+
+
+                if (TimeSpan.TryParse(_workDays[i].timeChecking[0], out TimeSpan parsedTime))
+                {
+                    TimeSpan parsedTimeEnd = TimeSpan.Parse(_workDays[i].timeChecking[_workDays[i].timeChecking.Count - 1]);
+                    var duration = parsedTimeEnd - parsedTime;
+                    //Đếm ngày đi muộn 
+                    if (parsedTime > allowedStartTime && parsedTime < h11)
+                    {
+                        lateDayCount++;
+                        LateDays += $"{i + 1}, "; // +1 để đánh số ngày bắt đầu từ 1
+                    }
+
+                    //Đếm ngày không checkin
+                    if (parsedTime > h9 && duration < h2)
+                    {
+                        NoCheckinCount++;
+                        NoCheckin += $"{i + 1}, "; // +1 để đánh số ngày bắt đầu từ 1
+                    }
+
+                    //Đếm ngày không checkout
+                    if (parsedTime < h17 && duration < h2)
+                    {
+                        NoCheckoutCount++;
+                        NoCheckout += $"{i + 1}, "; // +1 để đánh số ngày bắt đầu từ 1
+                    }
+
+                    //Đếm ngày không checkout
+                    if (duration > h3 && duration < h6)
+                    {
+                        HalfDayCount++;
+                        HalfDays += $"{i + 1}, "; // +1 để đánh số ngày bắt đầu từ 1
+                        dayWork += 0.5f;
+                    }
+                    else
+                    {
+                        dayWork += 1;
+                    }
+
+                }
+            }
+
+            if (lateDayCount > 0 && LateDays.Length >= 2)
+                LateDays = LateDays.Substring(0, LateDays.Length - 2);
+            if (NoCheckinCount > 0 && NoCheckin.Length >= 2)
+                NoCheckin = NoCheckin.Substring(0, NoCheckin.Length - 2);
+            if (NoCheckoutCount > 0 && NoCheckout.Length >= 2)
+                NoCheckout = NoCheckout.Substring(0, NoCheckout.Length - 2);
+            if (HalfDayCount > 0 && HalfDays.Length >= 2)
+                HalfDays = HalfDays.Substring(0, HalfDays.Length - 2);
+            if (dayWork > 0)
+            {
+                AppendDebug("----------");
+                AppendDebug($"Số ngày công: {dayWork}");
+                AppendDebug("----------");
+                AppendDebug($"Số hôm làm nửa ngày: {HalfDayCount}");
+                AppendDebug($"Vào ngày: {HalfDays}");
+                AppendDebug("----------");
+                AppendDebug($"Số hôm đi muộn: {lateDayCount}");
+                AppendDebug($"Vào ngày: {LateDays}");
+                AppendDebug("----------");
+                AppendDebug($"Số hôm không check in: {NoCheckinCount}");
+                AppendDebug($"Vào ngày: {NoCheckin}");
+                AppendDebug("----------");
+                AppendDebug($"Số hôm không check out: {NoCheckoutCount}");
+                AppendDebug($"Vào ngày: {NoCheckout}");
+
+                writer.WriteBox(new string[,]
+                               {
+                                    { "Số ngày công:", dayWork.ToString()},
+                                    { "", "" },
+                                    { "Làm nửa ngày:", HalfDayCount.ToString()},
+                                    { "Vào ngày", HalfDays },
+                                    { "Đi muộn:", lateDayCount.ToString()},
+                                    { "Vào ngày", LateDays },
+                                    { "Không check in:", NoCheckinCount.ToString()},
+                                    { "Vào ngày", NoCheckin },
+                                    { "Không check out:", NoCheckoutCount.ToString()},
+                                    { "Vào ngày", NoCheckout },
+                                    { "", "" }
+                               },
+
+                                new bool[,] {
+                                    { true, false },
+                                    { true, false },
+                                    { true, false },
+                                    { true, false },
+                                    { true, false },
+                                    { true, false },
+                                    { true, false },
+                                    { true, false },
+                                    { true, false },
+                                    { true, false },
+                                    { true, false },
+                                }
+
+                               );
+            }
+            else
+            {
+                AppendDebug($"Không đi làm");
+                writer.WriteBox(new string[,]
+                               {
+                                    { "Không đi làm", " "},
+                               });
+            }
+            AppendDebug("----------");
+            AppendDebug("      ");
+            writer.WriteBox(new string[,]
+                               {
+                                    { "", "" }
+                               });
+
+
+        }
+        public IWorkbook writeWorkbook;
+        public ISheet sheet;
+        public ICellStyle borderedStyle;
+        public void SetupSheet(string sheetName, int[] columnWidths)
+        {
+            writeWorkbook = new XSSFWorkbook();
+            sheet = writeWorkbook.CreateSheet(sheetName);
+
+            // Set column widths (width in characters * 256)
+            for (int i = 0; i < columnWidths.Length; i++)
+            {
+                sheet.SetColumnWidth(i, columnWidths[i] * 256);
+            }
+
+            // Tạo style có border
+            borderedStyle = writeWorkbook.CreateCellStyle();
+            borderedStyle.BorderTop = BorderStyle.Thin;
+            borderedStyle.BorderBottom = BorderStyle.Thin;
+            borderedStyle.BorderLeft = BorderStyle.Thin;
+            borderedStyle.BorderRight = BorderStyle.Thin;
+        }
+        public void SaveWorkbook(IWorkbook workbook)
+        {
+            using (var fs = new FileStream(OutputFilePathTextBox.Text, FileMode.Create, FileAccess.Write))
+            {
+                workbook.Write(fs);
+                AppendDebug("EXPORT FILE THÀNH CÔNG");
+            }
+        }
+
+        public void ExportSample()
+        {
+            IWorkbook workbook = new XSSFWorkbook();
+            ISheet sheet = workbook.CreateSheet("MySheet");
+
+            IRow row = sheet.CreateRow(0);
+            row.CreateCell(0).SetCellValue("Hello");
+            row.CreateCell(1).SetCellValue("World");
+
+
+            using (var fs = new FileStream(OutputFilePathTextBox.Text, FileMode.Create, FileAccess.Write))
+            {
+                workbook.Write(fs);
+            }
+        }
     }
     [System.Serializable]
     public class WorkDay
@@ -488,4 +697,102 @@ namespace CountWodayWpf
             this.timeChecking = timeChecking;
         }
     }
+
+    public class BoxWriter
+    {
+        private readonly ISheet _sheet;
+        private readonly IWorkbook _workbook;
+        private readonly ICellStyle _baseStyle;
+        private int _currentRow;
+
+        private readonly Dictionary<string, ICellStyle> _styleCache = new();
+
+        // Map tên màu sang chỉ số màu tương thích với NPOI 2.6+
+        private readonly Dictionary<string, short> _colorMap = new()
+        {
+            { "Red", IndexedColors.Red.Index },
+            { "Green", IndexedColors.Green.Index },
+            { "Yellow", IndexedColors.Yellow.Index },
+            { "LightGreen", IndexedColors.LightGreen.Index },
+            { "LightYellow", IndexedColors.LightYellow.Index },
+            { "Grey25", IndexedColors.Grey25Percent.Index },
+            { "Orange", IndexedColors.Orange.Index },
+            { "None", -1 }
+        };
+
+        public BoxWriter(ISheet sheet, ICellStyle baseStyle, int startRow = 0)
+        {
+            _sheet = sheet;
+            _workbook = sheet.Workbook;
+            _baseStyle = baseStyle;
+            _currentRow = startRow;
+        }
+
+        private ICellStyle GetOrCreateStyle(bool isBold, string colorName)
+        {
+            string key = $"{isBold}_{colorName ?? "None"}";
+
+            if (_styleCache.TryGetValue(key, out var cachedStyle))
+                return cachedStyle;
+
+            var font = _workbook.CreateFont();
+            font.IsBold = isBold;
+
+            var style = _workbook.CreateCellStyle();
+            style.CloneStyleFrom(_baseStyle);
+            style.SetFont(font);
+
+            if (!string.IsNullOrWhiteSpace(colorName) &&
+                _colorMap.TryGetValue(colorName, out var colorIndex) &&
+                colorIndex >= 0)
+            {
+                style.FillForegroundColor = colorIndex;
+                style.FillPattern = FillPattern.SolidForeground;
+            }
+
+            _styleCache[key] = style;
+            return style;
+        }
+
+        public void WriteBox(
+            string[,] content,
+            bool[,] isBold = null,
+            string[,] fillColorNames = null,
+            int startCol = 0,
+            int rowSpacing = 1)
+        {
+            int rowCount = content.GetLength(0);
+            int colCount = content.GetLength(1);
+
+            for (int r = 0; r < rowCount; r++)
+            {
+                IRow row = _sheet.GetRow(_currentRow + r) ?? _sheet.CreateRow(_currentRow + r);
+
+                for (int c = 0; c < colCount; c++)
+                {
+                    string text = content[r, c] ?? "";
+                    ICell cell = row.GetCell(startCol + c) ?? row.CreateCell(startCol + c);
+                    cell.SetCellValue(text);
+
+                    bool bold = isBold != null &&
+                                isBold.GetLength(0) > r &&
+                                isBold.GetLength(1) > c &&
+                                isBold[r, c];
+
+                    string colorName = fillColorNames != null &&
+                                       fillColorNames.GetLength(0) > r &&
+                                       fillColorNames.GetLength(1) > c
+                                       ? fillColorNames[r, c]
+                                       : null;
+
+                    cell.CellStyle = GetOrCreateStyle(bold, colorName);
+                }
+            }
+
+            _currentRow += rowCount + rowSpacing;
+        }
+
+        public int GetCurrentRow() => _currentRow;
+    }
+
 }
