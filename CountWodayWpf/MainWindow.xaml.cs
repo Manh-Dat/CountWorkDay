@@ -301,49 +301,37 @@ namespace CountWodayWpf
                 return null;
             }
         }
-        public List<string> ReadRangeFromSheet(string startCell, string endCell, string filePath, int sheetIndex = 0)
+        public void ProcessCellRange(string start, string end, string filePath, int sheetIndex = 0)
         {
-            var result = new List<string>();
+            var (startRow, startCol) = ParseCell(start.Trim());
+            var (endRow, endCol) = ParseCell(end.Trim());
 
-            if (string.IsNullOrWhiteSpace(filePath) || !System.IO.File.Exists(filePath))
-                return result;
-
-            try
+            using (var fs = new System.IO.FileStream(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read))
             {
                 IWorkbook workbook;
-                using (var fs = new System.IO.FileStream(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read))
+                if (filePath.EndsWith(".xls"))
+                    workbook = new HSSFWorkbook(fs);
+                else if (filePath.EndsWith(".xlsx"))
+                    workbook = new XSSFWorkbook(fs);
+                else
+                    throw new Exception("Định dạng file không hỗ trợ");
+
+                var sheet = workbook.GetSheetAt(sheetIndex);
+
+                for (int r = startRow; r <= endRow; r++)
                 {
-                    if (filePath.EndsWith(".xls"))
-                        workbook = new HSSFWorkbook(fs);
-                    else if (filePath.EndsWith(".xlsx"))
-                        workbook = new XSSFWorkbook(fs);
-                    else
-                        throw new Exception("Định dạng file không hỗ trợ");
+                    var row = sheet.GetRow(r);
+                    if (row == null) continue;
 
-                    var sheet = workbook.GetSheetAt(sheetIndex);
-
-                    var (rowStart, colStart) = ParseCell(startCell);
-                    var (rowEnd, colEnd) = ParseCell(endCell);
-
-                    for (int r = rowStart; r <= rowEnd; r++)
+                    for (int c = startCol; c <= endCol; c++)
                     {
-                        var row = sheet.GetRow(r);
-                        if (row == null) continue;
-
-                        for (int c = colStart; c <= colEnd; c++)
-                        {
-                            var cell = row.GetCell(c);
-                            result.Add(cell?.ToString() ?? "");
-                        }
+                        var cell = row.GetCell(c);
+                        string cellValue = cell?.ToString();
+                        Console.WriteLine($"[{r},{c}] = {cellValue}");
+                        // hoặc xử lý gì đó với cellValue...
                     }
                 }
             }
-            catch
-            {
-                // Log lỗi nếu cần
-            }
-
-            return result;
         }
         public async void ShowInfor()
         {
@@ -403,20 +391,21 @@ namespace CountWodayWpf
                             // Tìm tên nhân viên
                             string empName = GetCellValueFromSheet(cellName, inputPath, sheetIdx);
                             AppendDebug($"Tên nhân viên: {empName}");
-                            await Task.Delay(100);
+                            await Task.Delay(1);
                             // Tìm dải ô Time Card
-                            List<string> thongtin = ReadRangeFromSheet(cellStart, cellEnd, inputPath, sheetIdx);
+                            ProcessCellRange(cellStart, cellEnd, inputPath, sheetIdx);
+                            /*List<string> thongtin = ProcessCellRange(cellStart, cellEnd, inputPath, sheetIdx);
                             if (thongtin.Count > 0)
                             {
                                 AppendDebug($"Dải ô Time Card: {cellStart} - {cellEnd}");
                                 AppendDebug("Thông tin Time Card:");
-                                    await Task.Delay(100);
+                                    await Task.Delay(1);
                                 foreach (var info in thongtin)
                                 {
                                     AppendDebug(info);
-                                    await Task.Delay(100);
+                                    await Task.Delay(1);
                                 }
-                            }
+                            }*/
                         }
                     }
                 }
