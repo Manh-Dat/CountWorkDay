@@ -17,6 +17,7 @@ using ClosedXML.Excel;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using NPOI.HSSF.UserModel;
+using System.IO;
 
 namespace CountWodayWpf
 {
@@ -255,21 +256,24 @@ namespace CountWodayWpf
         }
 
         // Chuyển A1 -> (row,col) (0-based)
-        private (int row, int col) ParseCell(string cell)
+        private (int row, int col) ParseCell(string cellAddress)
         {
             int col = 0;
-            int row = 0;
             int i = 0;
-            while (i < cell.Length && char.IsLetter(cell[i]))
+
+            // Lấy phần chữ cái (cột)
+            while (i < cellAddress.Length && char.IsLetter(cellAddress[i]))
             {
-                col = col * 26 + (char.ToUpper(cell[i]) - 'A' + 1);
+                col *= 26;
+                col += (char.ToUpper(cellAddress[i]) - 'A' + 1);
                 i++;
             }
-            col--;
-            string rowStr = cell.Substring(i);
-            int.TryParse(rowStr, out row);
-            row--;
-            return (row, col);
+
+            // Phần số là hàng
+            string rowPart = cellAddress.Substring(i);
+            int row = int.Parse(rowPart);
+
+            return (row - 1, col - 1); // Excel: 1-based, NPOI: 0-based
         }
         public string GetCellValueFromSheet(string cellAddress, string filePath, int sheetIndex = 0)
         {
@@ -301,7 +305,7 @@ namespace CountWodayWpf
                 return null;
             }
         }
-        public void ProcessCellRange(string start, string end, string filePath, int sheetIndex = 0)
+        public async void ProcessCellRange(string start, string end, string filePath, int sheetIndex = 0)
         {
             var (startRow, startCol) = ParseCell(start.Trim());
             var (endRow, endCol) = ParseCell(end.Trim());
@@ -318,6 +322,7 @@ namespace CountWodayWpf
 
                 var sheet = workbook.GetSheetAt(sheetIndex);
 
+                AppendDebug("Xử lý thông tin...");
                 for (int r = startRow; r <= endRow; r++)
                 {
                     var row = sheet.GetRow(r);
@@ -327,13 +332,59 @@ namespace CountWodayWpf
                     {
                         var cell = row.GetCell(c);
                         string cellValue = cell?.ToString();
-                        Console.WriteLine($"[{r},{c}] = {cellValue}");
+                        if (cellValue != null && !string.IsNullOrEmpty(cellValue))
+                        {
+                            AppendDebug(cellValue);
+                        }
                         // hoặc xử lý gì đó với cellValue...
                     }
                 }
             }
         }
-        public async void ShowInfor()
+        public List<WorkDay> ReadWorkDaysFromRange(string filePath, string startCell, string endCell, int sheetIndex = 0)
+        {
+            var workDays = new List<WorkDay>();
+
+            using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                IWorkbook workbook;
+                if (filePath.EndsWith(".xls"))
+                    workbook = new HSSFWorkbook(fs);
+                else
+                    workbook = new XSSFWorkbook(fs);
+
+                var sheet = workbook.GetSheetAt(sheetIndex);
+
+                var (startRow, startCol) = ParseCell(startCell);
+                var (endRow, endCol) = ParseCell(endCell);
+
+                for (int rowIndex = startRow; rowIndex <= endRow; rowIndex++)
+                {
+                    var row = sheet.GetRow(rowIndex);
+                    if (row == null) continue;
+
+                    var dayCell = row.GetCell(startCol);
+                    string dayString = dayCell?.ToString()?.Trim();
+                    if (string.IsNullOrEmpty(dayString)) continue;
+
+                    var timeChecking = new List<string>();
+                    for (int colIndex = startCol + 1; colIndex <= endCol; colIndex++)
+                    {
+                        var cell = row.GetCell(colIndex);
+                        var value = cell?.ToString()?.Trim();
+                        if (!string.IsNullOrEmpty(value))
+                        {
+                            timeChecking.Add(value);
+                        }
+                    }
+
+                    workDays.Add(new WorkDay(dayString, timeChecking));
+                }
+            }
+
+            return workDays;
+        }
+        public void ShowInfor()
         {
             string inputPath = InputFilePathTextBox.Text;
             if (string.IsNullOrWhiteSpace(inputPath) || !System.IO.File.Exists(inputPath))
@@ -391,9 +442,17 @@ namespace CountWodayWpf
                             // Tìm tên nhân viên
                             string empName = GetCellValueFromSheet(cellName, inputPath, sheetIdx);
                             AppendDebug($"Tên nhân viên: {empName}");
-                            await Task.Delay(1);
                             // Tìm dải ô Time Card
-                            ProcessCellRange(cellStart, cellEnd, inputPath, sheetIdx);
+                            List<WorkDay> workDays = ReadWorkDaysFromRange(inputPath, cellStart, cellEnd,  sheetIdx);
+                            for (int i = 0; i < workDays.Count; i++)
+                            {
+                                AppendDebug("-------" + workDays[i].dayString);
+                                for (int j = 0; j < workDays[i].timeChecking.Count; j++)
+                                {
+                                    AppendDebug(workDays[i].timeChecking[j]);
+                                }
+
+                            }
                             /*List<string> thongtin = ProcessCellRange(cellStart, cellEnd, inputPath, sheetIdx);
                             if (thongtin.Count > 0)
                             {
@@ -416,5 +475,17 @@ namespace CountWodayWpf
             }
         }
         
+    }
+    [System.Serializable]
+    public class WorkDay
+    {
+        public string dayString;
+        public List<string> timeChecking;
+
+        public WorkDay(string dayString, List<string> timeChecking)
+        {
+            this.dayString = dayString;
+            this.timeChecking = timeChecking;
+        }
     }
 }

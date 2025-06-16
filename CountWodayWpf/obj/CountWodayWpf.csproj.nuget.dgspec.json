@@ -1,24 +1,24 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Tool Project\\CountWoDay\\CountWodayWpf\\CountWodayWpf.csproj": {}
+    "D:\\Project\\CountWoDay\\CountWodayWpf\\CountWodayWpf.csproj": {}
   },
   "projects": {
-    "D:\\Tool Project\\CountWoDay\\CountWodayWpf\\CountWodayWpf.csproj": {
+    "D:\\Project\\CountWoDay\\CountWodayWpf\\CountWodayWpf.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Tool Project\\CountWoDay\\CountWodayWpf\\CountWodayWpf.csproj",
+        "projectUniqueName": "D:\\Project\\CountWoDay\\CountWodayWpf\\CountWodayWpf.csproj",
         "projectName": "CountWodayWpf",
-        "projectPath": "D:\\Tool Project\\CountWoDay\\CountWodayWpf\\CountWodayWpf.csproj",
-        "packagesPath": "C:\\Users\\Gland.vn\\.nuget\\packages\\",
-        "outputPath": "D:\\Tool Project\\CountWoDay\\CountWodayWpf\\obj\\",
+        "projectPath": "D:\\Project\\CountWoDay\\CountWodayWpf\\CountWodayWpf.csproj",
+        "packagesPath": "C:\\Users\\Yami\\.nuget\\packages\\",
+        "outputPath": "D:\\Project\\CountWoDay\\CountWodayWpf\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Gland.vn\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\Yami\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
-          "net5.0-windows"
+          "net5.0-windows7.0"
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
@@ -55,15 +55,26 @@
             "net47",
             "net471",
             "net472",
-            "net48",
-            "net481"
+            "net48"
           ],
           "assetTargetFallback": true,
           "warn": true,
           "downloadDependencies": [
             {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[5.0.0, 5.0.0]"
+            },
+            {
               "name": "Microsoft.NETCore.App.Host.win-x64",
               "version": "[5.0.17, 5.0.17]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[5.0.0, 5.0.0]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[5.0.0, 5.0.0]"
             }
           ],
           "frameworkReferences": {
@@ -74,7 +85,7 @@
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.428\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.413\\RuntimeIdentifierGraph.json"
         }
       }
     }

@@ -4,17 +4,17 @@
 winexe
 C#
 .cs
-D:\Tool Project\CountWoDay\CountWodayWpf\obj\Debug\net5.0-windows\
+D:\Project\CountWoDay\CountWodayWpf\obj\Debug\net5.0-windows\
 CountWodayWpf
 none
 false
 TRACE;DEBUG;NET;NET5_0;NETCOREAPP
-D:\Tool Project\CountWoDay\CountWodayWpf\App.xaml
+D:\Project\CountWoDay\CountWodayWpf\App.xaml
 11407045341
 
 51487976139
-210267941881
+210-712869379
 MainWindow.xaml;
 
-False
+True
 
