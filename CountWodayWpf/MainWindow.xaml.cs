@@ -568,11 +568,11 @@ namespace CountWodayWpf
             ProgressBar.Visibility = Visibility.Collapsed;
         }
         TimeSpan h11 = new TimeSpan(11, 0, 0);
-        TimeSpan h9 = new TimeSpan(9, 30, 0);
+        TimeSpan h10 = new TimeSpan(10, 00, 0);
         TimeSpan h2 = new TimeSpan(2, 0, 0);
         TimeSpan h3 = new TimeSpan(3, 0, 0);
         TimeSpan h6 = new TimeSpan(6, 0, 0);
-        TimeSpan h17 = new TimeSpan(17, 0, 0);
+        TimeSpan h16 = new TimeSpan(16, 0, 0);
         public void HandleDayWork(List<WorkDay> _workDays,string nameEmp)
         {
             if (!TimeSpan.TryParse(StartTimeTextBox.Text, out TimeSpan allowedStartTime))
@@ -611,17 +611,19 @@ namespace CountWodayWpf
                     }
 
                     //Đếm ngày không checkin
-                    if (parsedTime > h9 && duration < h2)
+                    if (parsedTime > h10 && duration < h2)
                     {
                         NoCheckinCount++;
                         NoCheckin += $"{i + 1}, "; // +1 để đánh số ngày bắt đầu từ 1
                     }
-
                     //Đếm ngày không checkout
-                    if (parsedTime < h17 && duration < h2)
+                    else
                     {
-                        NoCheckoutCount++;
-                        NoCheckout += $"{i + 1}, "; // +1 để đánh số ngày bắt đầu từ 1
+                        if (parsedTime < h16 && duration < h2)
+                        {
+                            NoCheckoutCount++;
+                            NoCheckout += $"{i + 1}, "; // +1 để đánh số ngày bắt đầu từ 1
+                        }
                     }
 
                     //Đếm ngày không checkout
