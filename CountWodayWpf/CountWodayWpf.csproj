@@ -5,10 +5,12 @@
     <TargetFramework>net5.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>count.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.102.0" />
+    <PackageReference Include="MahApps.Metro" Version="2.4.10" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="NPOI" Version="2.6.1" />

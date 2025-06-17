@@ -2,3 +2,5 @@
 Ô chứa tên: Y4 | Ô bắt đầu: P13 | Ô kết thúc: AC43
 Ô chứa tên: AN4 | Ô bắt đầu: AE13 | Ô kết thúc: AR43
 KEYSTRING:Employee Attendance Table
+Fee:50
+Fee:100

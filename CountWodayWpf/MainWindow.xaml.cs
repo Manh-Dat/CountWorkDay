@@ -18,13 +18,15 @@ using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using NPOI.HSSF.UserModel;
 using System.IO;
+using System.Threading;
+using MahApps.Metro.Controls;
 
 namespace CountWodayWpf
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : MetroWindow
     {
         private const string SaveFilePath = "user_rows.txt";
 
@@ -74,7 +76,7 @@ namespace CountWodayWpf
 
         private void ProcessButton_Click(object sender, RoutedEventArgs e)
         {
-            ExportSample();
+            //ExportSample();
             return;
             DebugTextBox.Clear();
             string inputPath = InputFilePathTextBox.Text;
@@ -209,6 +211,31 @@ namespace CountWodayWpf
                 MessageBox.Show("Hãy chọn một dòng để xóa.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
+        private void AddRowButton_ClickFee(object sender, RoutedEventArgs e)
+        {
+            string cellFee = FeeTextBox.Text.Trim();
+            if (string.IsNullOrEmpty(cellFee) || int.TryParse(cellFee, out _))
+            {
+                MessageBox.Show("Vui lòng nhập số tiền phạt đúng dạng số", "Thiếu thông tin", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            string rowInfo = $"{cellFee}";
+            AddedRowsFeeListBox.Items.Add(rowInfo);
+            // Xóa nội dung các ô nhập
+            FeeTextBox.Text = "";
+        }
+
+        private void DeleteRowButton_ClickFee(object sender, RoutedEventArgs e)
+        {
+            if (AddedRowsFeeListBox.SelectedIndex >= 0)
+            {
+                AddedRowsFeeListBox.Items.RemoveAt(AddedRowsFeeListBox.SelectedIndex);
+            }
+            else
+            {
+                MessageBox.Show("Hãy chọn một dòng để xóa.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
 
         private void SaveRowsToFile()
         {
@@ -218,6 +245,10 @@ namespace CountWodayWpf
                 lines.Add(item.ToString());
             }
             lines.Add("KEYSTRING:" + (KeyStringTextBox.Text ?? ""));
+            foreach (var item in AddedRowsFeeListBox.Items)
+            {
+                lines.Add("Fee:" + item.ToString());
+            }
             System.IO.File.WriteAllLines(SaveFilePath, lines);
         }
 
@@ -232,11 +263,16 @@ namespace CountWodayWpf
                 {
                     KeyStringTextBox.Text = line.Substring("KEYSTRING:".Length);
                 }
+                else if (line.StartsWith("Fee:"))
+                {
+                    AddedRowsFeeListBox.Items.Add(line.Substring("Fee:".Length));
+                }
                 else
                 {
                     AddedRowsListBox.Items.Add(line);
                 }
             }
+            LoadFee();
         }
 
         protected override void OnContentRendered(EventArgs e)
@@ -244,7 +280,40 @@ namespace CountWodayWpf
             base.OnContentRendered(e);
             LoadRowsFromFile();
         }
+        public List<int> feeList;
+        public void LoadFee()
+        {
+            feeList = new List<int>();
+            for (int i = 0; i < AddedRowsFeeListBox.Items.Count; i++)
+            {
+                int fee;
+                if(int.TryParse(AddedRowsFeeListBox.Items[i].ToString(), out fee))
+                {
+                    feeList.Add(fee);
+                }
+                else
+                {
+                    AppendDebug($"{AddedRowsFeeListBox.Items[i].ToString()} Định dạng tiền phạt đang bị sai, hãy sửa lại để tiền phạt hoạt động đúng.");
+                }
+            }
+        }
+        public int GetFee(int penaltyCount)
+        {
+            if (feeList == null || feeList.Count == 0 || penaltyCount <= 0)
+                return 0;
 
+            int total = 0;
+
+            for (int i = 0; i < penaltyCount; i++)
+            {
+                if (i < feeList.Count)
+                    total += feeList[i];
+                else
+                    total += feeList[feeList.Count - 1]; // dùng mức phạt cuối
+            }
+
+            return total;
+        }
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
             SaveRowsToFile();
@@ -403,8 +472,10 @@ namespace CountWodayWpf
             return new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, 0).ToString("HH:mm");
         }
         BoxWriter writer;
-        public void ShowInfor()
+        public async void ShowInfor()
         {
+            LoadingText.Visibility = Visibility.Visible;
+            ProgressBar.Visibility = Visibility.Visible;
             string inputPath = InputFilePathTextBox.Text;
             SetupSheet("Kết quả chấm công", new int[] { 18, 30 });
             writer = new BoxWriter(sheet, borderedStyle, 1);
@@ -452,6 +523,12 @@ namespace CountWodayWpf
                         if (!hasKeyString) continue;
                         foreach (var item in AddedRowsListBox.Items)
                         {
+                            await Task.Run(() =>
+                            {
+                                // Gọi hàm xử lý nặng ở đây
+                                Thread.Sleep(1); // giả lập xử lý
+                                                    // hoặc ProcessData(); 
+                            });
                             // Định dạng: Ô chứa tên: {cellName} | Ô bắt đầu: {cellStart} | Ô kết thúc: {cellEnd}
                             string line = item.ToString();
                             var parts = line.Split('|');
@@ -462,16 +539,9 @@ namespace CountWodayWpf
                             // Tìm tên nhân viên
                             string empName = GetCellValueFromSheet(cellName, inputPath, sheetIdx);
                             AppendDebug($"Tên nhân viên: {empName}");
-                            writer.WriteBox(new string[,]
-                                {
-                                    { "Tên", empName }
-                                },
-                                new bool[,] { { true, true } },
-                                new string[,] {{ "LightGreen", null },{ "LightGreen", null }
-                                }
-                             );
+                            
                             // Tìm dải ô Time Card
-                            HandleDayWork(ReadWorkDaysFromRange(inputPath, cellStart, cellEnd, sheetIdx));
+                            HandleDayWork(ReadWorkDaysFromRange(inputPath, cellStart, cellEnd, sheetIdx), empName);
 
                             /*List<string> thongtin = ProcessCellRange(cellStart, cellEnd, inputPath, sheetIdx);
                             if (thongtin.Count > 0)
@@ -494,6 +564,8 @@ namespace CountWodayWpf
             {
                 AppendDebug($"Lỗi khi đọc file: {ex.Message}");
             }
+            LoadingText.Visibility = Visibility.Collapsed;
+            ProgressBar.Visibility = Visibility.Collapsed;
         }
         TimeSpan h11 = new TimeSpan(11, 0, 0);
         TimeSpan h9 = new TimeSpan(9, 30, 0);
@@ -501,13 +573,14 @@ namespace CountWodayWpf
         TimeSpan h3 = new TimeSpan(3, 0, 0);
         TimeSpan h6 = new TimeSpan(6, 0, 0);
         TimeSpan h17 = new TimeSpan(17, 0, 0);
-        public void HandleDayWork(List<WorkDay> _workDays)
+        public void HandleDayWork(List<WorkDay> _workDays,string nameEmp)
         {
             if (!TimeSpan.TryParse(StartTimeTextBox.Text, out TimeSpan allowedStartTime))
             {
                 MessageBox.Show("Giờ vào làm không hợp lệ. Định dạng đúng: HH:mm", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
+            int feeSum = 0;
             int lateDayCount = 0;
             string LateDays = "";
             int NoCheckinCount = 0;
@@ -567,11 +640,20 @@ namespace CountWodayWpf
             }
 
             if (lateDayCount > 0 && LateDays.Length >= 2)
+            {
                 LateDays = LateDays.Substring(0, LateDays.Length - 2);
+                feeSum += GetFee(lateDayCount);
+            }
             if (NoCheckinCount > 0 && NoCheckin.Length >= 2)
+            {
                 NoCheckin = NoCheckin.Substring(0, NoCheckin.Length - 2);
+                feeSum += GetFee(NoCheckinCount);
+            }
             if (NoCheckoutCount > 0 && NoCheckout.Length >= 2)
+            {
                 NoCheckout = NoCheckout.Substring(0, NoCheckout.Length - 2);
+                feeSum += GetFee(NoCheckoutCount);
+            }
             if (HalfDayCount > 0 && HalfDays.Length >= 2)
                 HalfDays = HalfDays.Substring(0, HalfDays.Length - 2);
             if (dayWork > 0)
@@ -590,11 +672,12 @@ namespace CountWodayWpf
                 AppendDebug("----------");
                 AppendDebug($"Số hôm không check out: {NoCheckoutCount}");
                 AppendDebug($"Vào ngày: {NoCheckout}");
-
+                feeSum *= 1000;
                 writer.WriteBox(new string[,]
                                {
+
+                                    { "Tên", nameEmp },
                                     { "Số ngày công:", dayWork.ToString()},
-                                    { "", "" },
                                     { "Làm nửa ngày:", HalfDayCount.ToString()},
                                     { "Vào ngày", HalfDays },
                                     { "Đi muộn:", lateDayCount.ToString()},
@@ -603,10 +686,11 @@ namespace CountWodayWpf
                                     { "Vào ngày", NoCheckin },
                                     { "Không check out:", NoCheckoutCount.ToString()},
                                     { "Vào ngày", NoCheckout },
-                                    { "", "" }
+                                    { "Tổng tiền phạt", feeSum.ToString()},
                                },
 
                                 new bool[,] {
+                                    { true, true },
                                     { true, false },
                                     { true, false },
                                     { true, false },
@@ -617,7 +701,19 @@ namespace CountWodayWpf
                                     { true, false },
                                     { true, false },
                                     { true, false },
-                                    { true, false },
+                                },
+                                new string[,] {
+                                    {"LightYellow", "" },
+                                    { "LightGreen", "LightGreen" },
+                                    { "LightGreen", "LightGreen" },
+                                    { "", "" },
+                                    { "LightGreen", "LightGreen" },
+                                    { "", "" },
+                                    { "LightGreen", "LightGreen" },
+                                    { "", "" },
+                                    { "LightGreen", "LightGreen" },
+                                    { "", "" },
+                                    { "LightBlue", "LightBlue" },
                                 }
 
                                );
@@ -627,8 +723,17 @@ namespace CountWodayWpf
                 AppendDebug($"Không đi làm");
                 writer.WriteBox(new string[,]
                                {
+                                    { "Tên", nameEmp },
                                     { "Không đi làm", " "},
-                               });
+                               },
+                               new bool[,] {
+                                    { true, true },
+                                    { false, false },
+                                },
+                                new string[,] {
+                                    {"LightYellow", "" },
+                                    { "", "" },
+                                });
             }
             AppendDebug("----------");
             AppendDebug("      ");
@@ -666,6 +771,15 @@ namespace CountWodayWpf
             {
                 workbook.Write(fs);
                 AppendDebug("EXPORT FILE THÀNH CÔNG");
+                 var result = MessageBox.Show("EXPORT FILE THÀNH CÔNG!\nBạn có muốn mở file ngay bây giờ?",
+                              "Thành công",
+                              MessageBoxButton.YesNo,
+                              MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    System.Diagnostics.Process.Start("explorer.exe", OutputFilePathTextBox.Text);
+                }
             }
         }
 
@@ -714,7 +828,8 @@ namespace CountWodayWpf
             { "Green", IndexedColors.Green.Index },
             { "Yellow", IndexedColors.Yellow.Index },
             { "LightGreen", IndexedColors.LightGreen.Index },
-            { "LightYellow", IndexedColors.LightYellow.Index },
+            { "LightBlue", IndexedColors.LightCornflowerBlue.Index },
+            { "LightYellow", IndexedColors.LightOrange.Index },
             { "Grey25", IndexedColors.Grey25Percent.Index },
             { "Orange", IndexedColors.Orange.Index },
             { "None", -1 }

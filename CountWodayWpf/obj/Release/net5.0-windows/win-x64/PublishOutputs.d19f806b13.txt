@@ -1,0 +1,2 @@
+D:\Tool Project\CountWoDay\CountWodayWpf\bin\Release\net5.0-windows\win-x64\publish\CountWodayWpf.pdb
+D:\Tool Project\CountWoDay\CountWodayWpf\bin\Release\net5.0-windows\win-x64\publish\CountWodayWpf.exe
